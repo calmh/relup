@@ -56,7 +56,7 @@ func main() {
 	fi, _ := fd.Stat()
 
 	log.Println("Uploading", path.Base(file))
-	url := strings.Replace(uploadUrl, "{?name}", "?name="+path.Base(file), 1)
+	url := strings.Replace(uploadUrl, "{?name,label}", "?name="+path.Base(file), 1)
 	req, err := http.NewRequest("POST", url, fd)
 	if err != nil {
 		log.Fatal(err)
