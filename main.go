@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -23,9 +24,19 @@ func main() {
 		log.Fatal("Please export GITHUB_TOKEN=\"<your token here>\"")
 	}
 
-	resp, err := http.Get(fmt.Sprintf("https://api.github.com/repos/%s/releases", repo))
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.github.com/repos/%s/releases", repo), nil)
+	req.Header.Set("Authorization", "token "+token)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		bs, _ := ioutil.ReadAll(resp.Body)
+		log.Fatal(resp.Status + ":\n" + string(bs))
 	}
 
 	var res []map[string]interface{}
@@ -37,15 +48,15 @@ func main() {
 	}
 	resp.Body.Close()
 
-	var uploadUrl string
+	var uploadURL string
 	for _, rel := range res {
 		if rel["tag_name"] == tag {
-			uploadUrl = rel["upload_url"].(string)
+			uploadURL = rel["upload_url"].(string)
 			break
 		}
 	}
 
-	if uploadUrl == "" {
+	if uploadURL == "" {
 		log.Fatalln("Found no release with that tag")
 	}
 
@@ -56,8 +67,8 @@ func main() {
 	fi, _ := fd.Stat()
 
 	log.Println("Uploading", path.Base(file))
-	url := strings.Replace(uploadUrl, "{?name,label}", "?name="+path.Base(file), 1)
-	req, err := http.NewRequest("POST", url, fd)
+	url := strings.Replace(uploadURL, "{?name,label}", "?name="+path.Base(file), 1)
+	req, err = http.NewRequest("POST", url, fd)
 	if err != nil {
 		log.Fatal(err)
 	}
