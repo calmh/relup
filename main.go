@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -66,9 +67,16 @@ func main() {
 	}
 	fi, _ := fd.Stat()
 
+	info, _ := fd.Stat()
+	size := info.Size()
+	progr := &progressWriter{
+		expected: size,
+	}
+	tee := io.TeeReader(fd, progr)
+
 	log.Println("Uploading", path.Base(file))
 	url := strings.Replace(uploadURL, "{?name,label}", "?name="+path.Base(file), 1)
-	req, err = http.NewRequest("POST", url, fd)
+	req, err = http.NewRequest("POST", url, tee)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -82,5 +90,27 @@ func main() {
 		log.Fatal(err)
 	}
 
+	progr.Close()
 	log.Println(resp.Status)
+}
+
+type progressWriter struct {
+	expected int64
+	current  int64
+}
+
+func (p *progressWriter) Write(data []byte) (int, error) {
+	p.current += int64(len(data))
+	p.printProgress()
+	return len(data), nil
+}
+
+func (p *progressWriter) Close() error {
+	fmt.Println()
+	return nil
+}
+
+func (p *progressWriter) printProgress() {
+	pct := float64(p.current) / float64(p.expected) * 100
+	fmt.Printf("\r%d / %d (%5.01f%%)", p.current, p.expected, pct)
 }
