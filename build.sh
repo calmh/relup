@@ -8,9 +8,9 @@ build() {
     name="$pkg-$version-$GOOS-$GOARCH"
     rm -rf "$name"
 
-    gb build
+    go build
     mkdir "$name"
-    mv "bin/$pkg-$GOOS-$GOARCH" "$name/$pkg"
+    mv "$pkg" "$name/$pkg"
     cp LICENSE README.md "$name"
     tar zcvf "$name.tar.gz" "$name"
     rm -rf "$name"
